@@ -1,0 +1,310 @@
+---
+title: "Bayesian reasoning / data exploration"
+author: "Butovens Médé"
+date: "2/4/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+### import necessary libraries
+# install.packages("tidyverse", "skimr", "dplyr")
+library(tidyverse)
+library(skimr)
+library(dplyr)
+```
+
+## 1: Bayesian reasoning about casting a guilty vote as a member of a jury (prompt not shown)
+
+We know that the population of SF is (assumed to be) 1 million. We also know that there is a 1/10,000 of fitting the description of the culprit. This means that in SF there is 100 people fitting the description of the culprit (i.e. 1,000,000/10,000 = 100). Also it we can assume that there is only one culprit, and that the culprit actually fit the description. Therefore here are the information that we have so far:
+
+* Total SF population : 1 000 000
+* People fitting the description in SF : 100
+* People fitting the description given that they are guilty: 1
+* People fitting the description given that they are not guilty: 100 - 1 = 99
+* People fitting not fitting the description: 1 000 000 - 100 = 999 900
+* People not guilty: 1 000 000 - 1 = 999 999
+
+
+
+from here we can fill out a summary table:
+
+
+|    | Guilty | Not Guilty | Total|
+|----:|---:|----:|---:|
+| Fit Description|   1|  99| 100|
+| Not Fit Description|   0|  999900| 999900|
+| Total|   1|  999999|  1000000|
+
+
+
+and we can compute the proportions (or probabilities) in each cell
+
+|    | Guilty | Not Guilty | Marginal|
+|----:|---:|----:|---:|
+| Fit Description|   .000001|  .000099| .0001|
+| Not Fit Description|   0|  .9999| .9999|
+| Marginal|   .000001|  .999999|  1|
+
+We want to know the probability of being the culprit given that the person fit the description i.e. p(Guilty | Fit)
+
+Let:
+$$
+Pr(Guilty) = .000001
+$$
+$$
+Pr(Fit) = .0001
+$$
+$$
+Pr(Fit| Guilty) = \frac{Pr(Fit \cap Guilty)}{Pr(Guilty)} = \frac{.000001}{.000001} = 1
+$$
+Thus:
+$$
+Pr(Guilty|Fit) = \frac{Pr(Fit| Guilty) Pr(Guilty)}{Pr(Fit)} = \frac{1\times.000001}{.00001} = .01
+$$
+Therefore, with only 1% chance of being the true culprit, I would not cast a guilty vote upon that (hopefully) law abiding citizen! 
+
+## 2: Bayesian reasoning in the context of corpus/historical linguistics data (prompt not shown)
+We know:
+
+$$
+Pr(Y=Pronoun) = .238
+$$
+Thus:
+$$
+Pr(Y=Not Pronoun) = 1 - .238 = .762
+$$
+And:
+
+$$
+Pr(X = Preverbal| Y=Pronoun) = .941
+$$
+$$
+Pr(X = Preverbal| Y= Not Pronoun) = .860
+$$
+
+We are looking for:
+
+$$
+Pr(Y=Pronoun|X = NotPreverbal) = \frac{Pr(X =Not Preverbal| Y=Pronoun)  Pr(Y=Pronoun)}{Pr(X = NotPreverbal)}
+$$
+
+We can also deduce:
+
+$$
+Pr(X = Preverbal \cap Y= Pronoun) = Pr(X = Preverbal| Y=Pronoun)Pr(Y=Pronoun) \\
+=.941 \times .238\\ 
+= .224 
+$$
+
+
+$$
+Pr(X = Preverbal \cap Y= NotPronoun) = Pr(X = Preverbal| Y=NotPronoun)Pr(Y=NotPronoun) \\
+=.860 \times .762\\ 
+= .655 
+$$
+
+
+Thus we have:
+
+|    | Y = Pronoun | Y = Not Pronoun | Marginal|
+|----:|---:|----:|---:|
+| X = Preverbal|   .224|  .655| |
+| X = Not Preverbal|   |  | |
+| Marginal|   .238|  .762|  1|
+
+
+We can know complete the remaining of this table and find the probabilities we are missing to solve bayes theorem:
+
+|    | Y = Pronoun | Y = Not Pronoun | Marginal|
+|----:|---:|----:|---:|
+| X = Preverbal|   .224|  .655| .224 + .655 =.879|
+| X = Not Preverbal|  .238 - .224 = .014 | .762 - .655 = .107| .014 + .107 = .121|
+| Marginal|   .238|  .762|  1|
+
+
+And:
+
+$$
+Pr(X =Not Preverbal| Y=Pronoun) = \frac{Pr(Not Preverbal \cap Y=Pronoun)}{Pr(Y=Pronoun)} = \frac{.014}{.238} = .059
+$$
+
+
+So finally:
+
+$$
+Pr(Y=Pronoun|X = NotPreverbal) = \frac{Pr(X =Not Preverbal| Y=Pronoun)  Pr(Y=Pronoun)}{Pr(X = NotPreverbal)} = \frac{.059 \times .238}{.121} =  .116
+$$
+
+Therefore the probability that the object is a pronoun given that it is postverbal is about 11.6% which is not very likely.
+
+## 3: Star Wars data set exploration
+### A)
+```{r}
+### load StarWars data set
+
+# Take a look a dataset
+View(starwars)
+# Take a look at data structure and variable info
+skim(starwars)
+
+### A) Create smaller data frame
+df_starwars <- starwars %>% 
+  # select appropriate column
+  select(name,species,birth_year,homeworld) %>% 
+  # Keep wanted observations (ie. human, droid) in desired column (i.e. column)
+  filter(species %in% c("Human","Droid") ) %>% 
+  # Order observations by age in decreasing order
+  arrange(desc(birth_year)) %>% 
+  # rename one column
+  rename(person = name)
+  
+df_starwars
+# Formatted response in data table
+# knitr::kable(df_starwars, "pipe")
+```
+
+### B)
+```{r}
+### B) compute BMI for masculine/human character
+df_starwars_bmi <- starwars %>% 
+  # Keep wanted observations (e.g. human and male) in desired column (i.e. species, sex) 
+  filter(species == "Human" & sex == "male") %>%
+  # add column that with computed BMI
+  mutate(bmi = mass/ (height * 0.01) ^ 2) %>% 
+  # Order observations by bmi in decreasing order
+  arrange(desc(bmi))
+  
+df_starwars_bmi
+
+# Formatted response in data table
+# knitr::kable(df_starwars_bmi, "pipe")
+```
+
+### C)
+```{r}
+### C) average height and mass and sd from different species and in different homeworlds
+df_starwars_mean_hei_mas <-  starwars %>% 
+  # Group variables of interests for analyses 
+  group_by(species,homeworld) %>% 
+  # Compute mean of height for species in different homeworlds (+ give name to new column)
+  summarize( mean_height = mean(height), 
+             # Compute standard deviation of height for species in different homeworlds (+ give name to new column)
+             sd_height = sd(height), 
+             # Compute mean of mass for species in different homeworlds (+ give name to new column)
+             mean_mass = mean(mass), 
+             # Compute standard deviation of mass for species in different homeworlds (+ give name to new column)
+             sd_mass = sd(mass), 
+             # Compute count of each subgroups of species by homeworlds (+ give name to new column)
+             n = n()) %>% 
+  # ungroup after using group_by (Best Practice: this can cause problem if not done) 
+  ungroup()
+
+df_starwars_mean_hei_mas
+
+# Formatted response in data table
+# knitr::kable(df_starwars_mean_hei_mas, "pipe")
+```
+The standard deviation is NA for many groups because when R computes the standard deviation is computes it using the sample standard deviation (i.e. with n-1 in the denominator). Because many of the groups have only one member it cannot compute it and gives an NA. In addition, for the groups with more than one members that also have "sd = NA", it is likely that one or more observations are missing in the variables of interests, and therefore, R returns a NA for the *mean* which in turns leads to a NA for the *standard deviation* (as R cannot compute it).
+
+### D)
+```{r}
+### D) Tallest member for each species and their eye color
+df_starwars_max_height_name <- starwars %>% 
+  # Group by variable of interest
+  group_by(species) %>% 
+  # Compute max height for each species
+  summarize(max_height = max(height, na.rm = TRUE), 
+            # Find name of person with max height for each species
+            max_height_name = name[which.max(height)],
+            # Find eye color of the person with max height for each species
+            max_height_eye_col = eye_color[which.max(height)]) %>% 
+  # Order observations from by max_height in decreasing order
+  arrange(desc(max_height)) %>% 
+  # ungroup after using group_by (Best Practice: this can cause problem if not done) 
+  ungroup()
+
+df_starwars_max_height_name
+
+### Alternative method 1
+starwars %>% 
+  group_by(species) %>% 
+  slice(which.max(height)) %>% 
+  select(height, name, eye_color) %>% 
+  arrange(desc(height))
+
+### Alternative method 2
+starwars %>% 
+  group_by(species) %>% 
+  filter(height == max(height, na.rm = T)) %>% 
+  select(height, name, eye_color) %>% 
+  arrange(desc(height))
+
+# Formatted response in data table
+# knitr::kable(df_starwars_max_height_name, "pipe")
+```
+### E)
+```{r}
+### E) Create new dataframe with column including unique species and column including "has force" "lacks force"
+df_starwars_force <- starwars %>% 
+  # Create a data frame with a column including unique species
+  distinct(species) %>% 
+  # Add column to data frame that has alternating "has force" "lacks force"
+  mutate(Force = rep(c("has force", "lacks force"),
+                     # Repeat"has force", "lacks force" to make it match the length of the previous column 
+                     times = n_distinct(species) / 2))
+
+df_starwars_force
+
+# Formatted response in data table
+# knitr::kable(df_starwars_force, "pipe")
+```
+
+### F)
+```{r}
+### F) Add df_starwars_force to main df using join and compute average mass force havers and lackers
+df_starwars_mas_for <- starwars %>% 
+  # Concatenate Force data frame with main data frame
+  left_join(df_starwars_force, by = "species") %>% 
+  # Group by variable of interest
+  group_by(Force) %>% 
+  # Compute average mass for has force lack force subgroups
+  summarize(mean_mass_force = mean(mass, na.rm = TRUE)) %>% 
+  # ungroup after using group_by (Best Practice: this can cause problem if not done)
+  ungroup()
+
+df_starwars_mas_for
+
+# Formatted response in data table
+# knitr::kable(df_starwars_full, "pipe")
+```
+
+### G)
+```{r}
+### G) Create scatterplot of height of force lackers over force havers by eye colors
+df_starwars_full <- starwars %>%
+  left_join(df_starwars_force, by = "species")
+
+# Create plot with ggplot 
+ ggplot(data = df_starwars_full,
+        # Specify plot's variables
+        mapping = aes(x = eye_color, 
+                      y = height, 
+                      # Specify variable to group data by
+                      color = Force)) +
+   # Specify plot type
+   geom_point() +
+   # Specify main title
+   labs(title = "Scatter plot of height of force lackers and force havers", 
+        # Specify subtitle (optional)
+        subtitle = "by eye colors", 
+        # Specify axis labels
+        y = "Height in cm", 
+        x = "Eye colors") 
+ 
+```
+
+
